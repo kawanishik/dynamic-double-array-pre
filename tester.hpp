@@ -34,10 +34,14 @@ public:
             bool check = true;
             std::cout << str_list[n] << std::endl;
             n++;
+            int n2;
             strset.insert(str);
-            for(int i=0; i< n; i++) {
+            for(int i=0; i < n; i++) {
                 check &= test(str_list[i]);
                 if(!check) {
+                    for(int j = i+1; j < n; j++) {
+                        test(str_list[j]);
+                    }
                     break;
                 }
             }
@@ -46,6 +50,7 @@ public:
                 exit(1);
             }
         }
+        //strset.check();
     }
     bool test(const std::string& str) {
         return(strset.contains(str));
