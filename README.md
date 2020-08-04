@@ -5,7 +5,3 @@
 
 baseにback方向の情報を記憶
 checkにforward方向の情報を記憶
-
-s4.txtのみ成功しない
-s7.txtは成功する
-原因は不明

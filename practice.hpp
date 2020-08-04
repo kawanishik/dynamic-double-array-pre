@@ -19,12 +19,12 @@ public:
 private:
     struct Unit {
         int base,check;
-        bool check_flag;
-        Unit() : base(kEmptyBase), check(kEmptyCheck), check_flag(true) {}
-        Unit(int b, int c, bool f) : base(b),check(c),check_flag(f) {}
+        bool is_used;
+        Unit() : base(kEmptyBase), check(kEmptyCheck), is_used(true) {}
+        Unit(int b, int c, bool f) : base(b),check(c),is_used(f) {}
     };
     std::vector<Unit> bc_;
-    int E_HEAD = 0;
+    int E_HEAD = -1;
     //bc_ = {kEmptyBase, 0}; // set root element
     
 
@@ -61,10 +61,11 @@ public:
                 }
                 else { // 子が存在するとき
                     int next_index = bc_[node].base + c;
-                    if(bc_[next_index].check_flag == true) {
-                        W_CHECK(next_index, node);
+                    expand(next_index);
+                    if(bc_[next_index].is_used == true) {
+                        AddCheck(next_index, node);
                         //bc_[next_index].check = node;
-                        //bc_[next_index].check_flag = false;
+                        //bc_[next_index].is_used = false;
                         //std::cout << "children exists in space" << std::endl;
                         InsertSuffix(next_index, std::string_view(str).substr(n+1));
                         break;
@@ -78,15 +79,18 @@ public:
                             tmp_index[a] = index;
 
                             // 子の子の値の保存
-                            bool flag = false;
+                            bool is_child = false;
                             for(int i = 0; i < tmp_child.size(); i++) {
                                 if(tmp_child[i][index]) {
-                                    flag = true;
+                                    is_child = true;
                                 }
                             }
-                            if(flag == false) {
+                            if(is_child == false) {
                                 for(int i=0; i < MaxUint8_t; i++) {
                                     uint8_t b = i;
+                                    if(bc_.size() < (bc_[index].base + b)) {
+                                        break;
+                                    }
                                     if(bc_[bc_[index].base + b].check == index) {
                                         tmp_child.emplace_back();
                                         tmp_child[tmp_child.size()-1][index] = b;
@@ -95,7 +99,6 @@ public:
                             }
 
                             // 使わない部部の消去
-                            // W_CHECK(index, 0);
                             Delete(index);
                         }
                         //std::cout << "children exists not space" << std::endl;
@@ -130,7 +133,7 @@ public:
                     std::cout << "c: " << a << ", " << int(a) << std::endl;
                     std::cout << "node : " << tmp_base << std::endl;
                     std::cout << "base : " << bc_[tmp_base].base << std::endl;
-                    std::cout << "flag : " << bc_[tmp_base].check_flag << std::endl;
+                    std::cout << "flag : " << bc_[tmp_base].is_used << std::endl;
                     int tmp_next = bc_[tmp_base].base + a;
                     std::cout << "check : " << bc_[tmp_next].check << std::endl;
                     if(tmp_base != bc_[tmp_next].check) {
@@ -157,13 +160,13 @@ public:
     void CheckContent() {
         std::cout << "----- CheckContent -----" << std::endl;
         for(int i=0; i < bc_.size(); i++) {
-            if(bc_[i].check_flag == true) {
+            if(bc_[i].is_used == true) {
                 std::cout << "check : " << bc_[i].check << ", i : " << i << std::endl;
             }
         }
         std::cout << "-------------base--------------" << std::endl;
         for(int i=0; i < bc_.size(); i++) {
-            if(bc_[i].check_flag == true) {
+            if(bc_[i].is_used == true) {
                 std::cout << "base : " << bc_[i].base << ", i : " << i << std::endl;
             }
         }
@@ -175,8 +178,12 @@ private:
         int e_index = E_HEAD;
         int base;
         int roop = 0;
-
+        /*
         if(bc_.size() == 1) {
+            return bc_.size();
+        }
+        */
+        if(E_HEAD == -1) {
             return bc_.size();
         }
 
@@ -191,7 +198,7 @@ private:
                 c = a;
             }
         }
-        if(bc_[e_index].check_flag == false) {
+        if(bc_[e_index].is_used == false) {
             return bc_.size();
         }
         //std::cout << "process find base" << std::endl;
@@ -199,31 +206,8 @@ private:
             //std::cout << "--------while------" << std::endl;
             //std::cout << "bc_size : " << bc_.size() << std::endl;
             //std::cout << "e_index : " << e_index << std::endl;
-            //std::cout << "e_index-check_flag : " << bc_[e_index].check_flag << std::endl;
+            //std::cout << "e_index-is_used : " << bc_[e_index].is_used << std::endl;
             //std::cout << "e_index-base : " << bc_[e_index].check << std::endl;
-            /*
-            bool flag = true;
-            if(e_index == 572) {
-                flag = false;
-                std::cout << "----- CheckContent -----" << std::endl;
-                std::cout << "size : " << bc_.size() << std::endl;
-                std::cout << bc_[568].check_flag << std::endl;
-                for(int j=0; j < 573; j++) {
-                    if(bc_[j].check_flag == true) {
-                        std::cout << "check : " << bc_[j].check << std::endl;
-                    }
-                }
-                std::cout << "-------------base--------------" << std::endl;
-                for(int i=0; i < bc_.size(); i++) {
-                    if(bc_[i].check_flag == true) {
-                        std::cout << "base : " << bc_[i].base << ", i : " << i << std::endl;
-                    }
-                }
-            }
-            if(flag == false) {
-                exit(1);
-            }
-            */
 
             roop += 1;
             bool found = true;
@@ -236,7 +220,7 @@ private:
                     if((base + b) >= bc_.size()) {
                         continue;
                     }
-                    if(bc_[base + b].check_flag == false) { // falseは使われているという意味
+                    if(bc_[base + b].is_used == false) { // falseは使われているという意味
                         e_index = bc_[e_index].check;
                         if(e_index == E_HEAD) {
                         //if(e_index == bc_.size()) {
@@ -269,7 +253,7 @@ private:
             return;
         
         int size_pre = bc_.size();
-        //std::cout << "flag : " << bc_[E_HEAD].check_flag << std::endl;
+        //std::cout << "flag : " << bc_[E_HEAD].is_used << std::endl;
         bc_.resize(index+1);
         int size = bc_.size();
         
@@ -279,16 +263,15 @@ private:
         }
         
         // E_HEADのbaseには，末尾のindexが格納されている
-
-        if(size_pre == 1) {
-            E_HEAD = 1;
+        if(E_HEAD == -1) {
+            E_HEAD = size_pre;
             for(int i = size_pre; i < size; i++) {
                 if(i > size_pre) {
                     bc_[i].base = -1 * (i-1);
                     //std::cout << "bc_[i].base : " << bc_[i].base << std::endl;
                 }
                 bc_[i].check = i+1;
-                bc_[i].check_flag = true;
+                bc_[i].is_used = true;
             }
             bc_[size-1].check = size_pre;
             bc_[size_pre].base = -1 * (size-1);
@@ -296,32 +279,22 @@ private:
         else {
             int e_index = E_HEAD;
 
-            if(bc_[e_index].check_flag == false) {
-                /*
-                std::cout << "------------------------- flag false -----------------------" << std::endl;
-                std::cout << "e_index : " << e_index << std::endl;
-                std::cout << "flag : " << bc_[e_index].check_flag << std::endl;
-                std::cout << "size_pre : " << size_pre << std::endl;
-                std::cout << "size : " << size << std::endl;
-                */
+            if(bc_[e_index].is_used == false) {
+                //std::cout << "------------------------- flag false -----------------------" << std::endl;
+                //std::cout << "e_index : " << e_index << std::endl;
+                //std::cout << "flag : " << bc_[e_index].is_used << std::endl;
+                //std::cout << "size_pre : " << size_pre << std::endl;
+                //std::cout << "size : " << size << std::endl;
                 for(int i=size_pre; i < size; i++) {
                     if(i > size_pre) {
                         bc_[i].base = -1 * (i-1);
                     }
                     bc_[i].check = i+1;
-                    bc_[i].check_flag = true;
+                    bc_[i].is_used = true;
                 }
                 E_HEAD = size_pre;
                 bc_[size-1].check = size_pre;
                 bc_[size_pre].base = -1 * (size - 1);
-                /*
-                std::cout << "----- CheckContent -----" << std::endl;
-                for(int i=0; i < bc_.size(); i++) {
-                    if(bc_[i].check_flag == true) {
-                        std::cout << "check : " << bc_[i].check << ", i : " << i << std::endl;
-                    }
-                }
-                */
             }
             else {
                 int f_index = -1 * bc_[e_index].base; // サイズを拡張する前の最後のindex
@@ -336,7 +309,7 @@ private:
                         bc_[i].base = -1 * (i-1);
                     }
                     bc_[i].check = i + 1;
-                    bc_[i].check_flag = true;
+                    bc_[i].is_used = true;
                 }
                 bc_[size-1].check = e_index;
                 bc_[e_index].base = -1 * (size-1);
@@ -356,7 +329,7 @@ private:
             bc_[node].base = base;
             int next_index = base + c;
             expand(next_index);
-            W_CHECK(next_index, node);
+            AddCheck(next_index, node);
             //bc_[next_index].check = node;
             node = next_index;
             row.clear();
@@ -368,7 +341,7 @@ private:
         bc_[node].base = base;
         int next_index = base + kLeafChar;
         expand(next_index);
-        W_CHECK(next_index, node);
+        AddCheck(next_index, node);
         //bc_[next_index].check = node;
         row.clear();
         //std::cout << "---------------end of InsertSuffix------------------" << std::endl;
@@ -395,7 +368,7 @@ private:
             uint8_t a = row[i];
             int next_index = base + a;
             expand(next_index);
-            W_CHECK(next_index, r);
+            AddCheck(next_index, r);
             //bc_[next_index].check = r;
             assert(tmp_base.count(a) == 1);
             bc_[next_index].base = tmp_base.find(a)->second;
@@ -406,7 +379,7 @@ private:
                 for(int j=0; j < tmp_child.size(); j++) {
                     if(tmp_child[j][index]) {
                         int next_next_index = bc_[next_index].base + tmp_child[j][index];
-                        W_CHECK(next_next_index, next_index);
+                        AddCheck(next_next_index, next_index);
                         //bc_[next_next_index].check = next_index;
                     }
                 }
@@ -415,7 +388,7 @@ private:
                     uint8_t b = i;
                     int next_next_index = bc_[next_index].base + b;
                     if (bc_[next_next_index].check == index) {
-                        W_CHECK(next_next_index, next_index);
+                        AddCheck(next_next_index, next_index);
                         //bc_[next_next_index].check = next_index;
                     }
                 }
@@ -424,7 +397,7 @@ private:
             if (a != kLeafChar) {
                 int next_next_index = bc_[next_index].base + kLeafChar;
                 if (bc_[next_next_index].check == index) {
-                    W_CHECK(next_next_index, next_index);
+                    AddCheck(next_next_index, next_index);
                     //bc_[next_next_index].check = next_index;
                 }
             }
@@ -433,7 +406,7 @@ private:
         if (c != kLeafChar) {
             int next_index = base + c;
             expand(next_index);
-            W_CHECK(next_index, node);
+            AddCheck(next_index, node);
             //bc_[next_index].check = node;
             node = next_index;
             InsertSuffix(node, str);
@@ -473,7 +446,6 @@ private:
                 }
             }
         }
-
         return row;
     }
 
@@ -481,80 +453,49 @@ private:
     void Delete(int index) {
         //std::cout << "------- Delete ------" << std::endl;
         //std::cout << "index : " << index << std::endl;
-        //std::cout << "check_flag : " << bc_[index].check_flag << std::endl;
-        int e_index = E_HEAD;
-        bc_[index].base = kEmptyBase;
-        bc_[index].check_flag = true;
-        bool flag = true;
-
-        //E_HEAD = index;
-        //bc_[index].check = e_index;
-        //std::cout << "check_flag : " << bc_[e_index].check_flag << std::endl;
-        
-        int prev_index = -1 * bc_[e_index].base;
-        int next_index = bc_[e_index].check;
-        //std::cout << "E_HEAD : " << E_HEAD << std::endl;
-        //std::cout << "prev_index : " << prev_index << std::endl;
-        //std::cout << "next_index : " << next_index << std::endl;
-        bc_[e_index].check = index;
-        bc_[next_index].base = -1 * index;
-        bc_[index].check = next_index;
-        bc_[index].base = -1 * e_index;
-        //std::cout << "bc_[prev_index].check : " << bc_[prev_index].check << std::endl;
-        //std::cout << "bc_[next_index].base : " << bc_[next_index].base << std::endl;
-        //std::cout << "bc_[index].check : " << bc_[index].check << std::endl;
-        //std::cout << "bc_[index].base : " << bc_[index].base << std::endl;
-        E_HEAD = index;
-        //std::cout << "E_HEAD : " << E_HEAD << std::endl;
-        
-        /*
-        if(index == 99) {
-            std::cout << "here here here" << std::endl;
-            std::cout << "prev_index : " << prev_index << std::endl;
-            std::cout << "next_index : " << next_index << std::endl;
-            std::cout << "5  : " << bc_[5].base << ", " << bc_[5].check << ", " << bc_[5].check_flag << std::endl;
-        }
-        */
-
-        /*
-        if(e_index > index) {
+        //std::cout << "is_used : " << bc_[index].is_used << std::endl;
+        if(E_HEAD == -1) {
             E_HEAD = index;
-            bc_[index].check = e_index;
-            flag = false;
+            bc_[index].is_used = true;
+            bc_[index].check = index;
+            bc_[index].base = -1 * index;
         }
-        if(flag) {
-            while(true) {
-                roop += 1;
-                if(bc_[e_index].check == bc_.size()) { // 末尾に加えるだけ
-                    bc_[e_index].check = index;
-                    bc_[index].check = bc_.size();
-                    break;
-                }
-                if(bc_[e_index].check > index) { // 間に入る
-                    bc_[index].check = bc_[e_index].check;
-                    bc_[e_index].check = index;
-                    break;
-                }
-                e_index = bc_[e_index].check;
-            }
+        else {
+            int e_index = E_HEAD;
+            bc_[index].is_used = true;
+            bool flag = true;
+            
+            int prev_index = -1 * bc_[e_index].base;
+            int next_index = bc_[e_index].check;
+            //std::cout << "E_HEAD : " << E_HEAD << std::endl;
+            //std::cout << "prev_index : " << prev_index << std::endl;
+            //std::cout << "next_index : " << next_index << std::endl;
+            bc_[e_index].check = index;
+            bc_[next_index].base = -1 * index;
+            bc_[index].check = next_index;
+            bc_[index].base = -1 * e_index;
+            E_HEAD = index;
+            //std::cout << "E_HEAD : " << E_HEAD << std::endl;
         }
-        */
     }
 
     // bc_[index].checkにvalを格納する
     // 未使用要素を再構築する
-    void W_CHECK(int index, int val) {
-        //std::cout << "------- W_CHECk ------" << std::endl;
+    void AddCheck(int index, int val) {
+        //std::cout << "------- AddCheck ------" << std::endl;
         //std::cout << "index : " << index << std::endl;
         //std::cout << "bc_.size : " << bc_.size() << std::endl;
         int e_index = E_HEAD;
-        
         bool flag = true;
-        if(bc_[index].check_flag == false) {
-            flag = false;
+        
+        if(bc_[index].is_used == false) {
+            //flag = false;
+            E_HEAD = -1;
+            bc_[index].check = val;
+            return;
         }
 
-        bc_[index].check_flag = false; // 使っている
+        bc_[index].is_used = false; // 使っている
         
         if(E_HEAD == index) {// 未使用要素の先頭だった場合
             E_HEAD = bc_[index].check;
@@ -573,30 +514,22 @@ private:
             bc_[next_index].base = -1 * prev_index;
             //std::cout << "prev_index : " << prev_index << std::endl;
             //std::cout << "next_index : " << next_index << std::endl;
-            //std::cout << "next_index_flag : " << bc_[next_index].check_flag << std::endl;
-            /*
-            while(true) {
-                if(bc_[e_index].check == index) {
-                    bc_[e_index].check = bc_[index].check;
-                    break;
-                }
-                e_index = bc_[e_index].check;
-            }
-            */
+            //std::cout << "next_index_flag : " << bc_[next_index].is_used << std::endl;
         }
         bc_[index].check = val;
 
         // 要素をすべて使い切ってしまった時の処理
-        if(bc_[E_HEAD].check_flag == false) {
+        if(bc_[E_HEAD].is_used == false) {
             //std::cout << "-------- run out of -------" << std::endl;
             //std::cout << "here" << std::endl;
             //E_HEAD = bc_.size();
             //std::cout << "here2" << std::endl;
             //std::cout << "E_HEAD : " << E_HEAD << std::endl;
             //std::cout << "e_index : " << e_index << std::endl;
-            //std::cout << "flag1 : " << bc_[E_HEAD].check_flag << std::endl;
-            //std::cout << "flag2 : " << bc_[e_index].check_flag << std::endl;
-            expand(bc_.size());
+            //std::cout << "flag1 : " << bc_[E_HEAD].is_used << std::endl;
+            //std::cout << "flag2 : " << bc_[e_index].is_used << std::endl;
+            //expand(bc_.size());
+            E_HEAD = -1;
             //expand(bc_.size()+1);
             //std::cout << "here3" << std::endl;
         }
