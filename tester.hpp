@@ -41,11 +41,23 @@ public:
                     break;
                 }
             }
+            //strset.SizeCheck();
             std::cout << (check ? "OK" : "Failed") << std::endl;
+            //std::cout << std::endl;
             if(!check) {
+                strset.CheckContent();
                 exit(1);
             }
+            /*
+            std::cout << "str_size : " << str.size() << std::endl;
+            for(int i=0; i < str.size(); i++) {
+                uint8_t c = str[i];
+                std::cout << "i : " << i << ", " << c << ", " << int(c) << std::endl;
+            }
+            */
         }
+        //strset.CheckContent();
+        //strset.SizeCheck();
     }
     bool test(const std::string& str) {
         return(strset.contains(str));

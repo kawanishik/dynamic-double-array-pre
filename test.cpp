@@ -1,6 +1,6 @@
 #include "tester.hpp"
-
 #include <iostream>
+#include <chrono>
 
 namespace {
 /*
@@ -17,6 +17,8 @@ void test(int num) {
 }
 
 int main(int argc, char* argv[]) {
+    std::chrono::system_clock::time_point start, end;
+    start = std::chrono::system_clock::now();
     b3prac::Tester tester;
     if (argc == 1) {
         for (int i = 0; i < 5; i++) {
@@ -35,4 +37,7 @@ int main(int argc, char* argv[]) {
         }
         */
     }
+    end = std::chrono::system_clock::now();
+    double time = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000000.0);
+    std::cout << "time : " << time << "[s]"<< std::endl;
 }
