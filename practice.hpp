@@ -279,41 +279,22 @@ private:
         else {
             int e_index = E_HEAD;
 
-            if(bc_[e_index].is_used == false) {
-                //std::cout << "------------------------- flag false -----------------------" << std::endl;
-                //std::cout << "e_index : " << e_index << std::endl;
-                //std::cout << "flag : " << bc_[e_index].is_used << std::endl;
-                //std::cout << "size_pre : " << size_pre << std::endl;
-                //std::cout << "size : " << size << std::endl;
-                for(int i=size_pre; i < size; i++) {
-                    if(i > size_pre) {
-                        bc_[i].base = -1 * (i-1);
-                    }
-                    bc_[i].check = i+1;
-                    bc_[i].is_used = true;
-                }
-                E_HEAD = size_pre;
-                bc_[size-1].check = size_pre;
-                bc_[size_pre].base = -1 * (size - 1);
-            }
-            else {
-                int f_index = -1 * bc_[e_index].base; // サイズを拡張する前の最後のindex
-                //std::cout << "e_index : " << e_index << std::endl;
-                //std::cout << "f_index : " << f_index << std::endl;
-                //std::cout << "size_pre : " << size_pre << std::endl;
-                bc_[size_pre].base = -1 * f_index; // 中間をつなげる
-                bc_[f_index].check = size_pre;
+            int f_index = -1 * bc_[e_index].base; // サイズを拡張する前の最後のindex
+            //std::cout << "e_index : " << e_index << std::endl;
+            //std::cout << "f_index : " << f_index << std::endl;
+            //std::cout << "size_pre : " << size_pre << std::endl;
+            bc_[size_pre].base = -1 * f_index; // 中間をつなげる
+            bc_[f_index].check = size_pre;
 
-                for(int i = size_pre; i < size; i++) {
-                    if(i > size_pre) {
-                        bc_[i].base = -1 * (i-1);
-                    }
-                    bc_[i].check = i + 1;
-                    bc_[i].is_used = true;
+            for(int i = size_pre; i < size; i++) {
+                if(i > size_pre) {
+                    bc_[i].base = -1 * (i-1);
                 }
-                bc_[size-1].check = e_index;
-                bc_[e_index].base = -1 * (size-1);
+                bc_[i].check = i + 1;
+                bc_[i].is_used = true;
             }
+            bc_[size-1].check = e_index;
+            bc_[e_index].base = -1 * (size-1);
         }
     }
 
