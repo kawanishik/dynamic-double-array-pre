@@ -1,3 +1,18 @@
+<<<<<<< HEAD
+core.*
+a.out
+test
+
+
+### https://raw.github.com/github/gitignore/a14296fa82ae0be1ddeaf39b12fce1e2aed2c5b9/Python.gitignore
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+=======
 core.*
 a.out
 test
@@ -130,6 +145,43 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+### https://raw.github.com/github/gitignore/218a941be92679ce67d0484547e3e142b2f5f6f0/C++.gitignore
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+>>>>>>> master
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
 
 
 ### https://raw.github.com/github/gitignore/218a941be92679ce67d0484547e3e142b2f5f6f0/C++.gitignore

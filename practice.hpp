@@ -26,12 +26,22 @@ private:
     };
     struct Tmp {
         int index;
+        uint8_t child, sibling;
+    };
+    // baseとindexを保存するための構造体
+    struct BaseAndIndexUint {
+        int base, index;
         uint8_t child;
-        uint8_t sibling;
+    };
+    // 子の子を保存するための構造体
+    struct ChildUint {
+        int index;
+        uint8_t child;
     };
     std::vector<Unit> bc_;
     int E_HEAD = -1;
-    //bc_ = {kEmptyBase, 0}; // set root element
+    std::vector<BaseAndIndexUint> tmp_BaI;
+    std::vector<ChildUint> tmp_arr; // 子の子を保存する
     
 
 public:
@@ -46,9 +56,8 @@ public:
         int n = 0;
         for(uint8_t c : str) {
             int next_node = Transition(node, c);
-            std::unordered_map<uint8_t, int> tmp_base; // base値を保存する
-            std::unordered_map<uint8_t, int> tmp_index; // indexを保存する
-            std::vector<std::unordered_map<int, uint8_t>> tmp_child; // 子の子を保存する
+            //std::unordered_map<uint8_t, int> tmp_base; // base値を保存する
+            //std::unordered_map<uint8_t, int> tmp_index; // indexを保存する
             if (next_node == kFailedIndex) {
                 auto row = GetChildren(node); // 子を取得
                 //std::cout << "----------------------------------------------------" << std::endl;
@@ -93,29 +102,38 @@ public:
                         for(int i=0; i < row.size(); i++) {
                             uint8_t a = row[i];
                             int index = bc_[node].base + a;
-                            tmp_base[a] = bc_[index].base;
-                            tmp_index[a] = index;
+                            //tmp_base[a] = bc_[index].base;
+                            //tmp_index[a] = index;
+                            
+                            int size = tmp_BaI.size();
+                            tmp_BaI.emplace_back();
+                            tmp_BaI[size].base = bc_[index].base;
+                            tmp_BaI[size].index = index;
+                            tmp_BaI[size].child = a;
 
                             // 子の子の値の保存
                             bool is_child = false;
-                            for(int i = 0; i < tmp_child.size(); i++) {
-                                if(tmp_child[i][index]) {
+                            for(int i=0; i < tmp_arr.size(); i++) {
+                                if(tmp_arr[i].index == index) {
                                     is_child = true;
                                 }
                             }
-                            if(is_child == false) {
+                            if(!is_child) {
                                 uint8_t c1 = bc_[index].child;
-                                tmp_child.emplace_back();
-                                tmp_child[tmp_child.size()-1][index] = c1;
+
+                                int arr_size = tmp_arr.size();
+                                tmp_arr.emplace_back();
+                                tmp_arr[arr_size].index = index;
+                                tmp_arr[arr_size].child = c1;
+
                                 int next = bc_[index].base + c1;
-                                while(true) {
-                                    if(bc_[next].sibling == MaxUint8_t) {
-                                        break;
-                                    }
+                                while(bc_[next].sibling != MaxUint8_t) {
                                     c1 = bc_[next].sibling;
                                     next = bc_[index].base + c1;
-                                    tmp_child.emplace_back();
-                                    tmp_child[tmp_child.size()-1][index] = c1;
+                                    int arr_size = tmp_arr.size();
+                                    tmp_arr.emplace_back();
+                                    tmp_arr[arr_size].index = index;
+                                    tmp_arr[arr_size].child = c1;
                                 }
                             }
 
@@ -123,10 +141,11 @@ public:
                             Delete(index);
                         }
                         //std::cout << "children exists not space" << std::endl;
-                        ModifyAndInsertSuffix(node, tmp_child, tmp_base, tmp_index, row, c, std::string_view(str).substr(n+1));
-                        tmp_base.clear();
-                        tmp_index.clear();
-                        tmp_child.clear();
+                        ModifyAndInsertSuffix(node, row, c, std::string_view(str).substr(n+1));
+                        //tmp_base.clear();
+                        //tmp_index.clear();
+                        tmp_BaI.clear();
+                        tmp_arr.clear();
                         break;
                     }
                 }
@@ -194,16 +213,12 @@ public:
     }
 
 private:
-    int find_base(const std::unordered_map<uint8_t, int>& row) const {
+    int find_base(const std::vector<uint8_t>& row) const {
         //std::cout << "--------------find_base----------------" << std::endl;
         int e_index = E_HEAD;
         int base;
         int roop = 0;
-        /*
-        if(bc_.size() == 1) {
-            return bc_.size();
-        }
-        */
+        
         if(E_HEAD == -1) {
             return bc_.size();
         }
@@ -213,8 +228,8 @@ private:
         if(row.size() == 0) {
             c = kLeafChar;
         }
-        for(auto p : row) {
-            uint8_t a = p.first;
+        
+        for(uint8_t a : row) {
             if(c > a) {
                 c = a;
             }
@@ -235,9 +250,7 @@ private:
             base = e_index - c;
             
             if(base > 0) {
-                for(auto p : row) {
-                    uint8_t b = p.first;
-                    int next_row = p.second;
+                for(uint8_t b : row) {
                     if((base + b) >= bc_.size()) {
                         continue;
                     }
@@ -339,11 +352,11 @@ private:
     // 残りの文字列を新たに格納
     void InsertSuffix(int r, std::string_view ax) {
         //std::cout << "-------------InsertSuffix-----------------" << std::endl;
-        std::unordered_map<uint8_t, int> row;
+        std::vector<uint8_t> row;
         int node = r;
         for (int i =0; i < ax.size(); i++) {
             uint8_t c = ax[i];
-            row[c] = 0;
+            row.push_back(c);
             int base = find_base(row);
             bc_[node].base = base;
             if(bc_[node].child == MaxUint8_t) {
@@ -359,7 +372,7 @@ private:
         }
         //std::cout << "way to InsertSuffix" << std::endl;
         // kLeafChar
-        row[kLeafChar] = 0;
+        row.push_back(kLeafChar);
         int base = find_base(row);
         bc_[node].base = base;
         bc_[node].child = kLeafChar;
@@ -374,24 +387,17 @@ private:
 
     // 更新
     void ModifyAndInsertSuffix(int r, 
-        std::vector<std::unordered_map<int, uint8_t>> tmp_child,
-        const std::unordered_map<uint8_t, int>& tmp_base, 
-        const std::unordered_map<uint8_t, int>& tmp_index, 
         const std::vector<uint8_t>& row, 
         uint8_t c, 
         std::string_view str) 
         {
         int node = r;
-        std::unordered_map<uint8_t, int> tmp_row;
+        std::vector<uint8_t> tmp_row = row;
         uint8_t prev_a;
         std::vector<int> next;
         std::vector<Tmp> tmp_;
 
-        for(int i = 0; i < row.size(); i++) {
-            tmp_row[row[i]] = 0;
-        }
-
-        tmp_row[c] = 0;
+        tmp_row.push_back(c);
         int base = find_base(tmp_row);
         bc_[r].base = base;
 
@@ -400,12 +406,24 @@ private:
             int next_index = base + a;
             expand(next_index);
             AddCheck(next_index, r);
+            /*
             assert(tmp_base.count(a) == 1);
             //bc_[next_index].base = tmp_base.find(a)->second;
             int base2 = tmp_base.find(a)->second;
             bc_[next_index].base = base2;
             assert(tmp_index.count(a) == 1);
             int index = tmp_index.find(a)->second;
+            */
+            int base2, index;
+            for(int i=0; i < tmp_BaI.size(); i++) {
+                if(tmp_BaI[i].child == a) {
+                    base2 = tmp_BaI[i].base;
+                    index = tmp_BaI[i].index;
+                    bc_[next_index].base = base2;
+                    tmp_BaI.erase(tmp_BaI.begin() + i);
+                    break;
+                }
+            }
 
             // 子リンクと兄弟リンクの遷移を行う
             uint8_t child2 = bc_[base2 + a].child;
@@ -424,29 +442,19 @@ private:
             tmp_[size].sibling = bc_[index].sibling;
 
             if(a != kLeafChar) {
-                for(int j=0; j < tmp_child.size(); j++) {
-                    if(tmp_child[j][index]) {
-                        int next_next_index = bc_[next_index].base + tmp_child[j][index];
+                for(int j=0; j < tmp_arr.size(); j++) {
+                    if(tmp_arr[j].index == index) {
+                        int next_next_index = bc_[next_index].base + tmp_arr[j].child;
                         AddCheck(next_next_index, next_index);
-                        //bc_[next_next_index].check = next_index;
+                        tmp_arr.erase(tmp_arr.begin() + j);
+                        j--;
                     }
                 }
-                /*
-                for(int i = 1; i < MaxUint8_t; i++) {
-                    uint8_t b = i;
-                    int next_next_index = bc_[next_index].base + b;
-                    if (bc_[next_next_index].check == index) {
-                        AddCheck(next_next_index, next_index);
-                        //bc_[next_next_index].check = next_index;
-                    }
-                }
-                */
             }
             if (a != kLeafChar) {
                 int next_next_index = bc_[next_index].base + kLeafChar;
                 if (bc_[next_next_index].check == index) {
                     AddCheck(next_next_index, next_index);
-                    //bc_[next_next_index].check = next_index;
                 }
             }
         }
