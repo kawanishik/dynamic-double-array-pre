@@ -105,11 +105,11 @@ public:
                             //tmp_base[a] = bc_[index].base;
                             //tmp_index[a] = index;
                             
-                            int size = tmp_BaI.size();
-                            tmp_BaI.emplace_back();
-                            tmp_BaI[size].base = bc_[index].base;
-                            tmp_BaI[size].index = index;
-                            tmp_BaI[size].child = a;
+                            //int size = tmp_BaI.size();
+                            //tmp_BaI.emplace_back();
+                            //tmp_BaI[size].base = bc_[index].base;
+                            //tmp_BaI[size].index = index;
+                            //tmp_BaI[size].child = a;
 
                             // 子の子の値の保存
                             bool is_child = false;
@@ -138,7 +138,7 @@ public:
                             }
 
                             // 使わない部部の消去
-                            Delete(index);
+                            //Delete(index);
                         }
                         //std::cout << "children exists not space" << std::endl;
                         ModifyAndInsertSuffix(node, row, c, std::string_view(str).substr(n+1));
@@ -397,6 +397,7 @@ private:
         std::vector<int> next;
         std::vector<Tmp> tmp_;
 
+        int pre_base = bc_[r].base; // 基準とするためのbase値の保存
         tmp_row.push_back(c);
         int base = find_base(tmp_row);
         bc_[r].base = base;
@@ -415,16 +416,11 @@ private:
             int index = tmp_index.find(a)->second;
             */
             int base2, index;
-            for(int i=0; i < tmp_BaI.size(); i++) {
-                if(tmp_BaI[i].child == a) {
-                    base2 = tmp_BaI[i].base;
-                    index = tmp_BaI[i].index;
-                    bc_[next_index].base = base2;
-                    tmp_BaI.erase(tmp_BaI.begin() + i);
-                    break;
-                }
-            }
 
+            index = pre_base + a;
+            base2 = bc_[index].base;
+            bc_[next_index].base = base2;
+            
             // 子リンクと兄弟リンクの遷移を行う
             uint8_t child2 = bc_[base2 + a].child;
             uint8_t sibling2 = bc_[base2 + a].sibling;
@@ -457,6 +453,8 @@ private:
                     AddCheck(next_next_index, next_index);
                 }
             }
+            // 使わない部部の消去
+            Delete(index);
         }
 
         // 子供が一つしか存在しない場合
