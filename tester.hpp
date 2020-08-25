@@ -10,7 +10,6 @@ namespace b3prac {
 class Tester {
 private:
     int num;
-    std::unordered_map<std::string, bool> samples;
     b3prac::StringSet strset;
 public:
     Tester() = default;
