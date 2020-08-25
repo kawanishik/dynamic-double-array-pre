@@ -275,7 +275,7 @@ private:
                 return base;
             }
         }
-        return bc_.size();
+        return bc_.size() - c;
     }
 
     void expand(int index) {
