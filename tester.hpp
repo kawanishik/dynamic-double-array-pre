@@ -58,7 +58,7 @@ public:
         }
         //strset.CheckContent();
         //strset.SizeCheck();
-        strset.CheckTAIL();
+        //strset.CheckTAIL();
     }
     bool test(const std::string& str) {
         return(strset.contains(str));

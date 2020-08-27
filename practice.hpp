@@ -50,6 +50,7 @@ public:
     void insert(const std::string& str) {
         int node = 0;
         int n = 0;
+        
         for(uint8_t c : str) {
             // TAILに対する遷移を検索するための処理
             if(bc_[node].base < 0) {
