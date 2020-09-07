@@ -114,7 +114,7 @@ public:
                             next_node = bc_[node].base + bc_[next_node].sibling;
                         }
                         //InsertSuffix(next_index, std::string_view(str).substr(n+1));
-                        InsertTAIL(next_index, std::string_view(str).substr(n+1), false);
+                        InsertTAIL(next_index, std::string_view(str).substr(n+1));
                         //InsertSuffix(next_index, std::string_view(str).substr(n+1));
                         break;
                     }
@@ -203,44 +203,40 @@ public:
                 //std::cout << "key.size : " << key.size() << std::endl;
                 int next = -1 * bc_[next_node].base;
                 //std::cout << "TAIL : " << TAIL[next] << std::endl;
-                if(next > TAIL.size()) {
-                    return false;
-                }
-                else {
-                    // 検索はn+1から行う
-                    int loop = 0;
-                    //std::cout << "next : " << next << std::endl;
-                    //std::cout << "key : " << key[n+1] << std::endl;
-                    for(int i=n+1; i < key.size(); i++, loop++) {
-                        uint8_t a = key[i];
-                        //std::cout << "---------" << std::endl;
-                        //std::cout << "a : " << int(a) << std::endl;
-                        //std::cout << "TAIL : " << int(TAIL[next+loop]) << std::endl;
-                        if(a != TAIL[next+loop]) {
-                            //std::cout << "i : " << i << std::endl;
-                            std::cout << "key : " << key << std::endl;
-                            std::cout << "key[i] : " << key[i] << std::endl;
-                            std::cout << "TAIL[] : " << TAIL[next+loop] << std::endl;
-                            int loop2 = 0;
-                            while(true) {
-                                //std::cout << TAIL[next+loop2] << std::endl;
-                                if(TAIL[next+loop2] == kLeafChar) {
-                                    break;
-                                }
-                                loop2++;
+                
+                // 検索はn+1から行う
+                int loop = 0;
+                //std::cout << "next : " << next << std::endl;
+                //std::cout << "key : " << key[n+1] << std::endl;
+                for(int i=n+1; i < key.size(); i++, loop++) {
+                    uint8_t a = key[i];
+                    //std::cout << "---------" << std::endl;
+                    //std::cout << "a : " << int(a) << std::endl;
+                    //std::cout << "TAIL : " << int(TAIL[next+loop]) << std::endl;
+                    if(a != TAIL[next+loop]) {
+                        //std::cout << "i : " << i << std::endl;
+                        std::cout << "key : " << key << std::endl;
+                        std::cout << "key[i] : " << key[i] << std::endl;
+                        std::cout << "TAIL[] : " << TAIL[next+loop] << std::endl;
+                        int loop2 = 0;
+                        while(true) {
+                            //std::cout << TAIL[next+loop2] << std::endl;
+                            if(TAIL[next+loop2] == kLeafChar) {
+                                break;
                             }
-                            return false;
+                            loop2++;
                         }
-                    }
-                    //std::cout << "value : " << TAIL[next + loop] << std::endl;
-                    //std::cout << next + loop << std::endl;
-                    if(kLeafChar == TAIL[next + loop]) {
-                        //std::cout << "success" << std::endl;
-                        return true;
-                    }
-                    else {
                         return false;
                     }
+                }
+                //std::cout << "value : " << TAIL[next + loop] << std::endl;
+                //std::cout << next + loop << std::endl;
+                if(kLeafChar == TAIL[next + loop]) {
+                    //std::cout << "success" << std::endl;
+                    return true;
+                }
+                else {
+                    return false;
                 }
             }
             n++;
@@ -251,7 +247,8 @@ public:
         //std::cout << "--------kLeafer check---------------------" << std::endl;
         //std::cout << "node  : " << node << std::endl;
         //std::cout << "check : " << bc_[next_node].check << std::endl;
-        //return next_node != kFailedIndex;
+        return next_node != kFailedIndex;
+        /*
         int next = -1 * bc_[next_node].base;
         if(MaxUint8_t == TAIL[next]) {
             return true;
@@ -259,6 +256,7 @@ public:
         else {
             return false;
         }
+        */
     }
 
     void SizeCheck() {
@@ -305,6 +303,18 @@ public:
             }
         }
         std::cout << "not use rate : " << count << " / " << TAIL.size() << std::endl;
+    }
+
+    // 空要素数を求める関数
+    void EmptyNum() {
+        int size = bc_.size();
+        int empty_num = 0;
+        for(int i=0; i < size; i++) {
+            if(bc_[i].not_used == true) {
+                empty_num++;
+            }
+        }
+        std::cout << "not use element num : " << empty_num << " / " << size << std::endl;
     }
 
 private:
@@ -492,49 +502,34 @@ private:
         expand(next_index);
         AddCheck(next_index, node);
         node = next_index;
-        row.clear();
+        //row.clear();
 
-        InsertTAIL(node, std::string_view(ax).substr(1), false);
+        InsertTAIL(node, std::string_view(ax).substr(1));
     }
 
     // TAILに格納するための関数(削除は考えずにすべて後ろに追加していく)
-    void InsertTAIL(int r, std::string_view ax, bool base_change) {
+    void InsertTAIL(int r, std::string_view ax) {
         //std::cout << "ax : " << ax << ", " << ax.size() << std::endl;
         int pre_size = TAIL.size();
         //std::cout << "pre_size : " << pre_size << std::endl;
-        if(!base_change){
-            bc_[r].base = -1 * pre_size;
         
-            TAIL.resize(pre_size+ax.size()+1, MaxUint8_t-1);
-            //std::cout << "TAIL.size : " << TAIL.size() << std::endl;
-            //std::cout << "ax.size : " << ax.size() << std::endl;
-            if(ax.size() > 0) {
-                for(int i=0; i < ax.size(); i++) {
-                    TAIL[pre_size+i] = ax[i];
-                    //std::cout << "pre_size + i : " << pre_size+i << std::endl;
-                    //std::cout << "ax : " << int(ax[i]) << std::endl;
-                    //std::cout << "TAIL[pre_size+i] : " << TAIL[pre_size+i] << std::endl;
-                }
-                TAIL[TAIL.size()-1] = kLeafChar;
+        bc_[r].base = -1 * pre_size;
+        
+        TAIL.resize(pre_size+ax.size()+1, MaxUint8_t-1);
+        //std::cout << "TAIL.size : " << TAIL.size() << std::endl;
+        //std::cout << "ax.size : " << ax.size() << std::endl;
+        if(ax.size() > 0) {
+            for(int i=0; i < ax.size(); i++) {
+                TAIL[pre_size+i] = ax[i];
+                //std::cout << "pre_size + i : " << pre_size+i << std::endl;
+                //std::cout << "ax : " << int(ax[i]) << std::endl;
+                //std::cout << "TAIL[pre_size+i] : " << TAIL[pre_size+i] << std::endl;
             }
-            else {
-                TAIL.resize(pre_size + 1);
-                TAIL[TAIL.size()-1] = MaxUint8_t;
-            }
+            TAIL[TAIL.size()-1] = kLeafChar;
         }
         else {
-            //std::cout << ax << std::endl;
-            int root = -1 * bc_[r].base;
-            int i=0;
-            if(ax.size() > 0) {
-                for(i=0; i < ax.size(); i++) {
-                    TAIL[root+i] = ax[i];
-                }
-                TAIL[root+i] = kLeafChar;
-            }
-            else {
-                TAIL[root] = MaxUint8_t;
-            }
+            TAIL.resize(pre_size + 1);
+            TAIL[TAIL.size()-1] = MaxUint8_t;
         }
         //std::cout << "TAIL.size -1 : " << TAIL.size()-1 << std::endl;
     }
@@ -558,7 +553,7 @@ private:
                 break;
             }
             // 使わない部分の削除
-            TAIL[TAIL_node + loop] = MaxUint8_t-1;
+            //TAIL[TAIL_node + loop] = MaxUint8_t-1;
             loop++;
         }
         for(int i=0; i < num; i++) {
@@ -599,10 +594,10 @@ private:
         expand(next_index);
         AddCheck(next_index, node);
         node = base + c1;
-        bc_[node].base = -1 * TAIL_node;
-        InsertTAIL(node, std::string_view(tmp_TAIL).substr(num+1), true);
+        bc_[node].base = -1 * (TAIL_node + num + 1);
+        //InsertTAIL(node, std::string_view(tmp_TAIL).substr(num+1));
         node = base + c2;
-        InsertTAIL(node, std::string_view(ax).substr(num+1), false);
+        InsertTAIL(node, std::string_view(ax).substr(num+1));
 
     }
 
@@ -715,7 +710,7 @@ private:
             bc_[base + c].sibling = MaxUint8_t;
             node = next_index;
             //InsertSuffix(node, str);
-            InsertTAIL(node, std::string_view(str).substr(0), false);
+            InsertTAIL(node, std::string_view(str).substr(0));
         }
         next.clear();
         tmp_.clear();

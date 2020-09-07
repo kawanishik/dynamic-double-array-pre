@@ -59,6 +59,7 @@ public:
         //strset.CheckContent();
         //strset.SizeCheck();
         //strset.CheckTAIL();
+        strset.EmptyNum();
     }
     bool test(const std::string& str) {
         return(strset.contains(str));
