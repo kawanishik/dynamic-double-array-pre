@@ -58,10 +58,7 @@ public:
                 
                 for(int i=n; i < str.size(); i++, loop_count++) {
                     uint8_t cc = str[i];
-                    //if(TAIL[base+loop_count] != str[i]) {
                     if(TAIL[base+loop_count] != cc) {
-                        //std::cout << "Failed c : " << str[i] << std::endl;
-                        //std::cout << "here 1" << std::endl;
                         InsertSuffixAndTAIL(node, std::string_view(str).substr(n), loop_count);
                         break;
                     }
@@ -71,51 +68,30 @@ public:
 
             int next_node = Transition(node, c);
             if (next_node == kFailedIndex) {
+
                 auto row = GetChildren(node); // 子を取得
-                //std::cout << "----------------------------------------------------" << std::endl;
-                //std::cout << "row_size : " << row.size() << std::endl;
-                //std::cout << "node : " << node << std::endl;
-                //std::cout << "n : " << n << std::endl;
                 uint8_t v = str[n];
-                //std::cout << "v: " << v << ", " << int(v) << std::endl;
-                //std::cout << "bc_size : " << bc_.size() << std::endl;
-                //std::cout << "next_node : " << next_node << std::endl;
                 
                 if (row.size() == 0) { // 子が存在しないとき
-                    //std::cout << "not child" << std::endl;
                     InsertSuffix(node, std::string_view(str).substr(n));
                     break;
                 }
                 else { // 子が存在するとき
                     int next_index = bc_[node].base + c;
-                    //expand(next_index);
-                    if(bc_[next_index].not_used == true) {
+                    
+                    if(bc_[next_index].not_used == true) { // 追加する場所が未使用要素の時
                         expand(next_index);
                         AddCheck(next_index, node);
-                        //bc_[next_index].check = node;
-                        //bc_[next_index].not_used = false;
-                        //std::cout << "children exists in space" << std::endl;
                         int next_node = bc_[node].base + bc_[node].child;
-                        //std::cout << "child : " << bc_[node].child << std::endl;
                         // siblingに対して，値の追加
                         while(true) {
-                            //std::cout << "----------------" << std::endl;
-                            //std::cout << "node    : " << next_node << std::endl;
-                            //std::cout << "not_used: " << bc_[next_node].not_used << std::endl;
-                            //std::cout << "child   : " << bc_[next_node].child << std::endl;
-                            //std::cout << "child   : " << int(bc_[next_node].child) << std::endl;
-                            //std::cout << "sibling : " << bc_[next_node].sibling << std::endl;
-                            //std::cout << "sibling : " << int(bc_[next_node].sibling) << std::endl;
-                            //if(bc_[next_node].sibling == MaxUint8_t and bc_[next_node].child == MaxUint8_t) {
                             if(bc_[next_node].sibling == MaxUint8_t) {
                                 bc_[next_node].sibling = c;
                                 break;
                             }
                             next_node = bc_[node].base + bc_[next_node].sibling;
                         }
-                        //InsertSuffix(next_index, std::string_view(str).substr(n+1));
                         InsertTAIL(next_index, std::string_view(str).substr(n+1));
-                        //InsertSuffix(next_index, std::string_view(str).substr(n+1));
                         break;
                     }
                     else {
@@ -342,13 +318,8 @@ private:
         if(bc_[e_index].not_used == false) {
             return bc_.size();
         }
-        //std::cout << "process find base" << std::endl;
+        
         while(true) {
-            //std::cout << "--------while------" << std::endl;
-            //std::cout << "bc_size : " << bc_.size() << std::endl;
-            //std::cout << "e_index : " << e_index << std::endl;
-            //std::cout << "e_index-not_used : " << bc_[e_index].not_used << std::endl;
-            //std::cout << "e_index-base : " << bc_[e_index].check << std::endl;
 
             roop += 1;
             bool found = true;
@@ -385,7 +356,7 @@ private:
 
     void expand(int index) {
         //std::cout << "----------------expand---------------" << std::endl;
-        //std::cout << "pre_size : " << bc_.size() << std::endl;
+        
         if (index < bc_.size())
             return;
         
@@ -418,10 +389,6 @@ private:
 
             if(bc_[e_index].not_used == false) {
                 //std::cout << "------------------------- flag false -----------------------" << std::endl;
-                //std::cout << "e_index : " << e_index << std::endl;
-                //std::cout << "flag : " << bc_[e_index].not_used << std::endl;
-                //std::cout << "size_pre : " << size_pre << std::endl;
-                //std::cout << "size : " << size << std::endl;
                 for(int i=size_pre; i < size; i++) {
                     if(i > size_pre) {
                         bc_[i].base = -1 * (i-1);
@@ -435,9 +402,7 @@ private:
             }
             else {
                 int f_index = -1 * bc_[e_index].base; // サイズを拡張する前の最後のindex
-                //std::cout << "e_index : " << e_index << std::endl;
-                //std::cout << "f_index : " << f_index << std::endl;
-                //std::cout << "size_pre : " << size_pre << std::endl;
+
                 bc_[size_pre].base = -1 * f_index; // 中間をつなげる
                 bc_[f_index].check = size_pre;
 
@@ -459,71 +424,31 @@ private:
         //std::cout << "-------------InsertSuffix-----------------" << std::endl;
         std::vector<uint8_t> row;
         int node = r;
-        /*
-        for (int i =0; i < ax.size(); i++) {
-            uint8_t c = ax[i];
-            row.push_back(c);
-            int base = find_base(row);
-            bc_[node].base = base;
-            if(bc_[node].child == MaxUint8_t) {
-                bc_[node].child = c;
-            }
-            int next_index = base + c;
-            expand(next_index);
-            AddCheck(next_index, node);
-            //bc_[next_index].check = node;
-            bc_[next_index].sibling = MaxUint8_t;
-            node = next_index;
-            row.clear();
-        }
-        //std::cout << "way to InsertSuffix" << std::endl;
-        // kLeafChar
-        row.push_back(kLeafChar);
-        int base = find_base(row);
-        bc_[node].base = base;
-        bc_[node].child = kLeafChar;
-        int next_index = base + kLeafChar;
-        expand(next_index);
-        AddCheck(next_index, node);
-        bc_[next_index].sibling = MaxUint8_t;
-        //bc_[next_index].check = node;
-        row.clear();
-        //std::cout << "---------------end of InsertSuffix------------------" << std::endl;
-        */
+        
         uint8_t c = ax[0];
         row.push_back(c);
         int base = find_base(row);
         bc_[node].base = base;
         bc_[node].child = c;
-        //auto row2 = GetChildren(node);
-        //std::cout << "size : " << row2.size() << std::endl;
-        //std::cout << "row2 : " << row2[0] << std::endl;
+        
         int next_index = base + c;
         expand(next_index);
         AddCheck(next_index, node);
         node = next_index;
-        //row.clear();
 
         InsertTAIL(node, std::string_view(ax).substr(1));
     }
 
     // TAILに格納するための関数(削除は考えずにすべて後ろに追加していく)
     void InsertTAIL(int r, std::string_view ax) {
-        //std::cout << "ax : " << ax << ", " << ax.size() << std::endl;
+        
         int pre_size = TAIL.size();
-        //std::cout << "pre_size : " << pre_size << std::endl;
-        
         bc_[r].base = -1 * pre_size;
-        
         TAIL.resize(pre_size+ax.size()+1, MaxUint8_t-1);
-        //std::cout << "TAIL.size : " << TAIL.size() << std::endl;
-        //std::cout << "ax.size : " << ax.size() << std::endl;
+        
         if(ax.size() > 0) {
             for(int i=0; i < ax.size(); i++) {
                 TAIL[pre_size+i] = ax[i];
-                //std::cout << "pre_size + i : " << pre_size+i << std::endl;
-                //std::cout << "ax : " << int(ax[i]) << std::endl;
-                //std::cout << "TAIL[pre_size+i] : " << TAIL[pre_size+i] << std::endl;
             }
             TAIL[TAIL.size()-1] = kLeafChar;
         }
@@ -531,38 +456,21 @@ private:
             TAIL.resize(pre_size + 1);
             TAIL[TAIL.size()-1] = MaxUint8_t;
         }
-        //std::cout << "TAIL.size -1 : " << TAIL.size()-1 << std::endl;
     }
 
     void InsertSuffixAndTAIL(int r, std::string_view ax, int num) {
         //std::cout << "---------- InsertSuffixAndTAIL ----------" << std::endl;
         int TAIL_node = -1 * bc_[r].base; // TAILの先頭を示す
         int node = r;
-        //std::cout << "r   : " << r << std::endl;
-        //std::cout << "ax  : " << ax << std::endl;
-        //std::cout << "num : " << num << std::endl;
-        //std::cout << "TAIL : " << TAIL[node+num] << std::endl;
-        //std::cout << "str  : " << ax[num] << std::endl;
         std::vector<uint8_t> row;
-        std::string tmp_TAIL = "";
         int loop = 0;
-        while(true) {
-            tmp_TAIL += TAIL[TAIL_node + loop];
-            //std::cout << TAIL[TAIL_node + loop] << ", " << int(TAIL[TAIL_node + loop]) << std::endl;;
-            if(TAIL[TAIL_node + loop] == kLeafChar) {
-                break;
-            }
-            // 使わない部分の削除
-            //TAIL[TAIL_node + loop] = MaxUint8_t-1;
-            loop++;
-        }
+        
         for(int i=0; i < num; i++) {
             uint8_t c = ax[i];
             row.push_back(c);
             int base = find_base(row);
             bc_[node].base = base;
             bc_[node].child = c;
-            //bc_[node].sibling = MaxUint8_t;
             int next_index = base + c;
             expand(next_index);
             AddCheck(next_index, node);
@@ -570,8 +478,7 @@ private:
             row.clear();
         }
         // 分岐している部分の処理
-        //uint8_t c1 = TAIL[TAIL_node + num];
-        uint8_t c1 = tmp_TAIL[num];
+        uint8_t c1 = TAIL[TAIL_node + num];
         uint8_t c2;
         if(ax.size() == 0) {
             c2 = kLeafChar;
@@ -581,8 +488,7 @@ private:
         }
         row.push_back(c1);
         row.push_back(c2);
-        //std::cout << "c1, c2 : " << c1 << ", " << c2 << std::endl;
-        //std::cout << int(c1) << ", " << int(c2) << std::endl;
+        
         int base = find_base(row);
         bc_[node].base = base;
         bc_[node].child = c1;
@@ -617,37 +523,20 @@ private:
         tmp_row.push_back(c);
         int base = find_base(tmp_row);
         bc_[r].base = base;
-        //std::cout << "size  : " << row.size() << std::endl;
-        //std::cout << "child : " << int(bc_[r].child) << std::endl;
+        
         for (int i = 0; i < row.size(); i++) {
             uint8_t a = row[i];
             int next_index = base + a;
-            //std::cout << "------------------" << std::endl;
-            //std::cout << "a : " << a << std::endl;
-            //std::cout << "index : " << pre_base + a << std::endl;
-            //std::cout << "not_used: " << bc_[pre_base + a].not_used << std::endl;
-            //std::cout << "child   : " << int(bc_[pre_base + a].child) << std::endl;
-            //std::cout << "sibling : " << bc_[pre_base + a].sibling << std::endl;
+            
             expand(next_index);
             AddCheck(next_index, r);
-            /*
-            assert(tmp_base.count(a) == 1);
-            //bc_[next_index].base = tmp_base.find(a)->second;
-            int base2 = tmp_base.find(a)->second;
-            bc_[next_index].base = base2;
-            assert(tmp_index.count(a) == 1);
-            int index = tmp_index.find(a)->second;
-            */
+            
             int base2, index;
-
             index = pre_base + a;
             base2 = bc_[index].base;
             bc_[next_index].base = base2;
 
             // 子リンクと兄弟リンクの遷移を行う
-            //uint8_t child2 = bc_[base2 + a].child;
-            //uint8_t sibling2 = bc_[base2 + a].sibling;
-            //if(bc_[index].sibling == MaxUint8_t and bc_[index].child != MaxUint8_t and a != bc_[r].child) {
             if(bc_[index].sibling == MaxUint8_t and a != bc_[r].child) {
                 prev_a = a;
             }
@@ -671,14 +560,6 @@ private:
                     }
                 }
             }
-            /*
-            if (a != kLeafChar) {
-                int next_next_index = bc_[next_index].base + kLeafChar;
-                if (bc_[next_next_index].check == index) {
-                    AddCheck(next_next_index, next_index);
-                }
-            }
-            */
             // 使わない部部の消去
             Delete(index);
         }
@@ -743,8 +624,6 @@ private:
     // 使っている要素を削除して，未使用要素に連結する
     void Delete(int index) {
         //std::cout << "------- Delete ------" << std::endl;
-        //std::cout << "index : " << index << std::endl;
-        //std::cout << "not_used : " << bc_[index].not_used << std::endl;
         if(E_HEAD == -1) {
             E_HEAD = index;
             bc_[index].not_used = true;
@@ -758,15 +637,13 @@ private:
             
             int prev_index = -1 * bc_[e_index].base;
             int next_index = bc_[e_index].check;
-            //std::cout << "E_HEAD : " << E_HEAD << std::endl;
-            //std::cout << "prev_index : " << prev_index << std::endl;
-            //std::cout << "next_index : " << next_index << std::endl;
+
             bc_[e_index].check = index;
             bc_[next_index].base = -1 * index;
             bc_[index].check = next_index;
             bc_[index].base = -1 * e_index;
             E_HEAD = index;
-            //std::cout << "E_HEAD : " << E_HEAD << std::endl;
+            
         }
     }
 
@@ -774,8 +651,7 @@ private:
     // 未使用要素を再構築する
     void AddCheck(int index, int val) {
         //std::cout << "------- AddCheck ------" << std::endl;
-        //std::cout << "index : " << index << std::endl;
-        //std::cout << "bc_.size : " << bc_.size() << std::endl;
+
         int e_index = E_HEAD;
         bool flag = true;
         
@@ -792,8 +668,7 @@ private:
             E_HEAD = bc_[index].check;
             int prev_index = -1 * bc_[index].base;
             int next_index = bc_[index].check;
-            //std::cout << "prev_index : " << prev_index << std::endl;
-            //std::cout << "next_index : " << next_index << std::endl;
+            
             bc_[prev_index].check = next_index;
             bc_[next_index].base = -1 * prev_index;
             flag = false;
@@ -803,9 +678,6 @@ private:
             int next_index = bc_[index].check;
             bc_[prev_index].check = next_index;
             bc_[next_index].base = -1 * prev_index;
-            //std::cout << "prev_index : " << prev_index << std::endl;
-            //std::cout << "next_index : " << next_index << std::endl;
-            //std::cout << "next_index_flag : " << bc_[next_index].not_used << std::endl;
         }
         bc_[index].check = val;
 
