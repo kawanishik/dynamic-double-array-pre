@@ -44,7 +44,8 @@ public:
             std::cout << (check ? "OK" : "Failed") << std::endl;
             //std::cout << std::endl;
             if(!check) {
-                strset.CheckContent();
+                //strset.CheckContent();
+                //strset.CheckTAIL();
                 exit(1);
             }
             /*
@@ -57,6 +58,8 @@ public:
         }
         //strset.CheckContent();
         //strset.SizeCheck();
+        //strset.CheckTAIL();
+        strset.EmptyNum();
     }
     bool test(const std::string& str) {
         return(strset.contains(str));
