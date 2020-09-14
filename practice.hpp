@@ -6,6 +6,7 @@
 #include <string_view>
 #include <cassert>
 #include <thread>
+#include <algorithm>
 
 namespace b3prac {
 
@@ -35,7 +36,6 @@ private:
     };
     std::vector<Unit> bc_;
     int E_HEAD = -1;
-    std::vector<ChildUint> tmp_arr; // 子の子を保存する
     std::vector<uint8_t> TAIL;
     
 
@@ -72,71 +72,58 @@ public:
                 auto row = GetChildren(node); // 子を取得
                 uint8_t v = str[n];
                 
-                if (row.size() == 0) { // 子が存在しないとき
-                    InsertSuffix(node, std::string_view(str).substr(n));
+                // 子が存在するとき
+                int next_index = bc_[node].base + c;
+                    
+                if(bc_[next_index].not_used) { // 追加する場所が未使用要素の時
+                    expand(next_index);
+                    AddCheck(next_index, node);
+                    // siblingに対して，値の追加
+                    bc_[next_index].sibling = bc_[node].child;
+                    bc_[node].child = c;
+
+                    InsertTAIL(next_index, std::string_view(str).substr(n+1));
                     break;
                 }
-                else { // 子が存在するとき
-                    int next_index = bc_[node].base + c;
-                    
-                    if(bc_[next_index].not_used == true) { // 追加する場所が未使用要素の時
-                        expand(next_index);
-                        AddCheck(next_index, node);
-                        int next_node = bc_[node].base + bc_[node].child;
-                        // siblingに対して，値の追加
-                        while(true) {
-                            if(bc_[next_node].sibling == MaxUint8_t) {
-                                bc_[next_node].sibling = c;
-                                break;
+                else {
+                    std::vector<ChildUint> tmp_arr; // 子の子を保存する
+                    // いろいろな値の保存
+                    for(uint8_t a : row) {
+                        int index = bc_[node].base + a;
+
+                        // 子の子の値の保存
+                        bool is_child = false;
+                        for(int i=0; i < tmp_arr.size(); i++) {
+                            if(tmp_arr[i].index == index) {
+                                is_child = true;
                             }
-                            next_node = bc_[node].base + bc_[next_node].sibling;
                         }
-                        InsertTAIL(next_index, std::string_view(str).substr(n+1));
-                        break;
-                    }
-                    else {
-                        // いろいろな値の保存
-                        for(int i=0; i < row.size(); i++) {
-                            uint8_t a = row[i];
-                            int index = bc_[node].base + a;
-
-                            // 子の子の値の保存
-                            bool is_child = false;
-                            for(int i=0; i < tmp_arr.size(); i++) {
-                                if(tmp_arr[i].index == index) {
-                                    is_child = true;
-                                }
+                        if(!is_child) {
+                            uint8_t c1 = bc_[index].child;
+                            if(c1 == MaxUint8_t) {
+                                continue;
                             }
-                            if(!is_child) {
-                                uint8_t c1 = bc_[index].child;
-                                if(c1 == MaxUint8_t) {
-                                    continue;
-                                }
 
+                            int arr_size = tmp_arr.size();
+                            tmp_arr.emplace_back();
+                            tmp_arr[arr_size].index = index;
+                            tmp_arr[arr_size].child = c1;
+
+                            int next = bc_[index].base + c1;
+                            while(bc_[next].sibling != MaxUint8_t) {
+                                c1 = bc_[next].sibling;
+                                next = bc_[index].base + c1;
                                 int arr_size = tmp_arr.size();
                                 tmp_arr.emplace_back();
                                 tmp_arr[arr_size].index = index;
                                 tmp_arr[arr_size].child = c1;
-
-                                int next = bc_[index].base + c1;
-                                while(bc_[next].sibling != MaxUint8_t) {
-                                    c1 = bc_[next].sibling;
-                                    next = bc_[index].base + c1;
-                                    int arr_size = tmp_arr.size();
-                                    tmp_arr.emplace_back();
-                                    tmp_arr[arr_size].index = index;
-                                    tmp_arr[arr_size].child = c1;
-                                }
                             }
-
-                            // 使わない部部の消去
-                            //Delete(index);
                         }
-                        //std::cout << "children exists not space" << std::endl;
-                        ModifyAndInsertSuffix(node, row, c, std::string_view(str).substr(n+1));
-                        tmp_arr.clear();
-                        break;
                     }
+                    //std::cout << "children exists not space" << std::endl;
+                    ModifyAndInsertSuffix(node, row, c, std::string_view(str).substr(n+1), tmp_arr);
+                    tmp_arr.clear();
+                    break;
                 }
             }
             node = next_node;
@@ -145,94 +132,40 @@ public:
     }
 
     bool contains(const std::string& key) const {
-        int node = 0; // root
-        int n = 0;
         //std::cout << "--------------contains---------------" << std::endl;
-        //std::cout << "key : " << key << std::endl;
-        //std::cout << "size : " << key.size() << std::endl;
-        for (uint8_t c : key) {
-            //std::cout << "uint8_t : " << c << std::endl;
-            //std::cout << "node  : " << node << std::endl;
-            int next_node = Transition(node, c);
-            //std::cout << "check : " << bc_[next_node].check << std::endl;
-            if (next_node == kFailedIndex) {
-                std::cout << "-------Fauiled value check------------" << std::endl;
-                std::cout << key << std::endl;
-                int tmp_base = 0;
-                for(uint8_t a : key) {
-                    std::cout << "c: " << a << ", " << int(a) << std::endl;
-                    std::cout << "node : " << tmp_base << std::endl;
-                    std::cout << "base : " << bc_[tmp_base].base << std::endl;
-                    std::cout << "flag : " << bc_[tmp_base].not_used << std::endl;
-                    int tmp_next = bc_[tmp_base].base + a;
-                    std::cout << "check : " << bc_[tmp_next].check << std::endl;
-                    if(tmp_base != bc_[tmp_next].check) {
-                        break;
-                    }
-                    tmp_base = tmp_next;
-                }
+        int node = 0; // root
+        int pos = 0;
+        int next_node;
+        
+        // ダブル配列内のチェック
+        for(uint8_t c : key) {
+            next_node = Transition(node, c);
+            if (next_node == kFailedIndex)
                 return false;
-            }
-            if(bc_[next_node].base < 0) {
-                //std::cout << "c : " << c << std::endl;
-                //std::cout << "n : " << n << std::endl;
-                //std::cout << "key.size : " << key.size() << std::endl;
-                int next = -1 * bc_[next_node].base;
-                //std::cout << "TAIL : " << TAIL[next] << std::endl;
-                
-                // 検索はn+1から行う
-                int loop = 0;
-                //std::cout << "next : " << next << std::endl;
-                //std::cout << "key : " << key[n+1] << std::endl;
-                for(int i=n+1; i < key.size(); i++, loop++) {
-                    uint8_t a = key[i];
-                    //std::cout << "---------" << std::endl;
-                    //std::cout << "a : " << int(a) << std::endl;
-                    //std::cout << "TAIL : " << int(TAIL[next+loop]) << std::endl;
-                    if(a != TAIL[next+loop]) {
-                        //std::cout << "i : " << i << std::endl;
-                        std::cout << "key : " << key << std::endl;
-                        std::cout << "key[i] : " << key[i] << std::endl;
-                        std::cout << "TAIL[] : " << TAIL[next+loop] << std::endl;
-                        int loop2 = 0;
-                        while(true) {
-                            //std::cout << TAIL[next+loop2] << std::endl;
-                            if(TAIL[next+loop2] == kLeafChar) {
-                                break;
-                            }
-                            loop2++;
-                        }
-                        return false;
-                    }
-                }
-                //std::cout << "value : " << TAIL[next + loop] << std::endl;
-                //std::cout << next + loop << std::endl;
-                if(kLeafChar == TAIL[next + loop]) {
-                    //std::cout << "success" << std::endl;
-                    return true;
-                }
-                else {
+            if(bc_[next_node].base < 0)
+                break;
+            pos++;
+            node = next_node;
+        }
+        // TAIL内のチェック
+        if(pos < key.size()) {
+            int next = -1 * bc_[next_node].base;
+            int loop = 0;
+            for(int i=pos+1; i < key.size(); i++, loop++) {
+                uint8_t a = key[i];
+                if(a != TAIL[next+loop]) {
                     return false;
                 }
             }
-            n++;
-            node = next_node;
-        }
-        // '\0'
-        int next_node = Transition(node, kLeafChar);
-        //std::cout << "--------kLeafer check---------------------" << std::endl;
-        //std::cout << "node  : " << node << std::endl;
-        //std::cout << "check : " << bc_[next_node].check << std::endl;
-        return next_node != kFailedIndex;
-        /*
-        int next = -1 * bc_[next_node].base;
-        if(MaxUint8_t == TAIL[next]) {
-            return true;
-        }
-        else {
-            return false;
-        }
-        */
+            if(kLeafChar == TAIL[next+loop])
+                return true;
+       }
+       // 終端文字の検索
+       else {
+           next_node = Transition(node, kLeafChar);
+           return next_node != kFailedIndex;
+       }
+       return false;
     }
 
     void SizeCheck() {
@@ -278,7 +211,7 @@ public:
                 count++;
             }
         }
-        std::cout << "not use rate : " << count << " / " << TAIL.size() << std::endl;
+        std::cout << "not use TAIL rate : " << count << " / " << TAIL.size() << std::endl;
     }
 
     // 空要素数を求める関数
@@ -305,19 +238,7 @@ private:
         }
 
         // row の中で，一番小さい数字を選択
-        uint8_t c = MaxUint8_t;
-        if(row.size() == 0) {
-            c = kLeafChar;
-        }
-        
-        for(uint8_t a : row) {
-            if(c > a) {
-                c = a;
-            }
-        }
-        if(bc_[e_index].not_used == false) {
-            return bc_.size();
-        }
+        uint8_t c = *std::min_element(row.begin(), row.end()); // 値ではなく，反復子を返す(*がいる)
         
         while(true) {
 
@@ -331,10 +252,6 @@ private:
                         continue;
                     }
                     if(bc_[base + b].not_used == false) { // falseは使われているという意味
-                        e_index = bc_[e_index].check;
-                        if(e_index == E_HEAD) {
-                            return bc_.size();
-                        }
                         found = false;
                         break;
                     }
@@ -342,16 +259,21 @@ private:
             }
             else {
                 found = false;
-                e_index = bc_[e_index].check;
-                if(e_index == E_HEAD) {
-                    return bc_.size();
-                }
             }
-            if(found) {
+            if(found) { // 場所が見つかった時
                 return base;
             }
+            // 次の要素を検索するための処理
+            e_index = bc_[e_index].check;
+            if(e_index == E_HEAD) {
+                break;
+            }
         }
-        return bc_.size() - c;
+        base = bc_.size() - c;
+        if(base < 0) {
+            base = 0;
+        }
+        return base;
     }
 
     void expand(int index) {
@@ -420,12 +342,12 @@ private:
     }
 
     // 残りの文字列を新たに格納
-    void InsertSuffix(int r, std::string_view ax) {
+    void InsertSuffix(int r, std::string_view left_str) {
         //std::cout << "-------------InsertSuffix-----------------" << std::endl;
         std::vector<uint8_t> row;
         int node = r;
         
-        uint8_t c = ax[0];
+        uint8_t c = left_str[0];
         row.push_back(c);
         int base = find_base(row);
         bc_[node].base = base;
@@ -436,26 +358,20 @@ private:
         AddCheck(next_index, node);
         node = next_index;
 
-        InsertTAIL(node, std::string_view(ax).substr(1));
+        InsertTAIL(node, std::string_view(left_str).substr(1));
     }
 
-    // TAILに格納するための関数(削除は考えずにすべて後ろに追加していく)
+    // TAILに格納するための関数
     void InsertTAIL(int r, std::string_view ax) {
         
         int pre_size = TAIL.size();
         bc_[r].base = -1 * pre_size;
         TAIL.resize(pre_size+ax.size()+1, MaxUint8_t-1);
         
-        if(ax.size() > 0) {
-            for(int i=0; i < ax.size(); i++) {
-                TAIL[pre_size+i] = ax[i];
-            }
-            TAIL[TAIL.size()-1] = kLeafChar;
+        for(int i=0; i < ax.size(); i++) {
+            TAIL[pre_size+i] = ax[i];
         }
-        else {
-            TAIL.resize(pre_size + 1);
-            TAIL[TAIL.size()-1] = MaxUint8_t;
-        }
+        TAIL[TAIL.size()-1] = kLeafChar;
     }
 
     void InsertSuffixAndTAIL(int r, std::string_view ax, int num) {
@@ -511,7 +427,8 @@ private:
     void ModifyAndInsertSuffix(int r, 
         const std::vector<uint8_t>& row, 
         uint8_t c, 
-        std::string_view str) 
+        std::string_view str,
+        std::vector<ChildUint> tmp_arr) 
         {
         int node = r;
         std::vector<uint8_t> tmp_row = row;
