@@ -122,7 +122,6 @@ public:
                     }
                     //std::cout << "children exists not space" << std::endl;
                     ModifyAndInsertSuffix(node, row, c, std::string_view(str).substr(n+1), tmp_arr);
-                    tmp_arr.clear();
                     break;
                 }
             }
