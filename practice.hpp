@@ -34,9 +34,15 @@ private:
         int index;
         uint8_t child;
     };
+    // rebuildする際に用いる
+    struct IndexUint {
+        int pre_index; // 再構築前の値の保持
+        int now_index; // 再構築後の値の保持
+    };
     std::vector<Unit> bc_;
     int E_HEAD = -1;
     std::vector<uint8_t> TAIL;
+    std::vector<Unit> tmp_bc_;
     
 
 public:
@@ -174,13 +180,13 @@ public:
     void CheckContent() {
         std::cout << "----- CheckContent -----" << std::endl;
         for(int i=0; i < bc_.size(); i++) {
-            if(bc_[i].not_used == true) {
+            if(bc_[i].not_used) {
                 std::cout << "check : " << bc_[i].check << ", i : " << i << std::endl;
             }
         }
         std::cout << "-------------base--------------" << std::endl;
         for(int i=0; i < bc_.size(); i++) {
-            if(bc_[i].not_used == true) {
+            if(bc_[i].not_used) {
                 std::cout << "base : " << bc_[i].base << ", i : " << i << std::endl;
             }
         }
@@ -218,11 +224,71 @@ public:
         int size = bc_.size();
         int empty_num = 0;
         for(int i=0; i < size; i++) {
-            if(bc_[i].not_used == true) {
+            if(bc_[i].not_used) {
                 empty_num++;
             }
         }
         std::cout << "not use element num : " << empty_num << " / " << size << std::endl;
+    }
+
+    // REBUILD関数(静的にbc_を作り直す)
+    void REBUILD() {
+        std::cout << "REBUILD" << std::endl;
+        tmp_bc_ = bc_; // 元のデータをtmp_bcにコピーしておく
+        std::vector<IndexUint> tmp_index; // 遷移ができるindexを格納しておくための配列(もともとのダブル配列のindex)
+        bc_.clear();
+        E_HEAD = -1; // 初期化したため
+        bc_ = {{kEmptyBase, 0, false, MaxUint8_t, MaxUint8_t}}; // set root element
+        expand(tmp_bc_.size()-1); // expand関数を用いることによって，領域を確保し，未使用要素を連結している
+        
+        // 先頭ノードのみ行う(tmp_indexのサイズが0だから)
+        auto row = GetChildrenRebild(0); // 専用の関数(REBUILDの時のみ用いる)
+        int base = find_base(row);
+        bc_[0].base = base;
+        bc_[0].child = tmp_bc_[0].child;
+        bc_[0].sibling = tmp_bc_[0].sibling;
+        for(auto c : row) {
+            int next_node = tmp_bc_[0].base + c;
+            int next_node_now = base + c;
+            AddCheck(next_node_now, 0);
+            bc_[next_node_now].child = tmp_bc_[next_node].child;
+            bc_[next_node_now].sibling = tmp_bc_[next_node].sibling;
+            if(tmp_bc_[next_node].base < 0) {
+                bc_[base + c].base = tmp_bc_[next_node].base;
+            }
+            else {
+                int size = tmp_index.size();
+                tmp_index.resize(size+1);
+                tmp_index[size].pre_index = next_node;
+                tmp_index[size].now_index = next_node_now;
+            }
+        }
+        // tmp_indexは，使ったら消す処理をしているので，要素がなくなるまで
+        while(tmp_index.size() != 0) {
+            int pre_node = tmp_index[0].pre_index;
+            int now_node = tmp_index[0].now_index;
+            auto row = GetChildrenRebild(pre_node);
+            int base = find_base(row);
+            bc_[now_node].base = base;
+            for(auto c : row) {
+                int next_node = tmp_bc_[pre_node].base + c;
+                int next_node_now = base + c;
+                AddCheck(base+c, now_node);
+                bc_[next_node_now].child = tmp_bc_[next_node].child;
+                bc_[next_node_now].sibling = tmp_bc_[next_node].sibling;
+                if(tmp_bc_[next_node].base < 0) {
+                    bc_[base + c].base = tmp_bc_[next_node].base;
+                }
+                else {
+                    int size = tmp_index.size();
+                    tmp_index.resize(size+1);
+                    tmp_index[size].pre_index = next_node;
+                    tmp_index[size].now_index = base + c;
+                }
+            }
+            tmp_index.erase(tmp_index.begin()); // 先頭の要素を消している
+        }
+        tmp_bc_.clear();
     }
 
 private:
@@ -250,7 +316,7 @@ private:
                     if((base + b) >= bc_.size()) {
                         continue;
                     }
-                    if(bc_[base + b].not_used == false) { // falseは使われているという意味
+                    if(!bc_[base + b].not_used) { // falseは使われているという意味
                         found = false;
                         break;
                     }
@@ -308,7 +374,7 @@ private:
         else {
             int e_index = E_HEAD;
 
-            if(bc_[e_index].not_used == false) {
+            if(!bc_[e_index].not_used) {
                 //std::cout << "------------------------- flag false -----------------------" << std::endl;
                 for(int i=size_pre; i < size; i++) {
                     if(i > size_pre) {
@@ -537,6 +603,30 @@ private:
         }
     }
 
+    // REBUILD関数に用いるためのGetChildrenRebuild
+    std::vector<uint8_t> GetChildrenRebild(int r) {
+        std::vector<uint8_t> row;
+        int count = 0;
+        if(tmp_bc_[r].base == kEmptyBase) {
+            return row;
+        }
+
+        int next_node = tmp_bc_[r].base + tmp_bc_[r].child;
+        row.emplace_back();
+        row[count] = tmp_bc_[r].child;
+        count++;
+
+        while(true) {
+            if(tmp_bc_[next_node].sibling == MaxUint8_t) {
+                return  row;
+            }
+            row.emplace_back();
+            row[count] = tmp_bc_[next_node].sibling;
+            next_node = tmp_bc_[r].base + tmp_bc_[next_node].sibling;
+            count++;
+        }
+    }
+
     // 使っている要素を削除して，未使用要素に連結する
     void Delete(int index) {
         //std::cout << "------- Delete ------" << std::endl;
@@ -571,7 +661,7 @@ private:
         int e_index = E_HEAD;
         bool flag = true;
         
-        if(bc_[index].not_used == false) {
+        if(!bc_[index].not_used) {
             //flag = false;
             E_HEAD = -1;
             bc_[index].check = val;
@@ -598,7 +688,7 @@ private:
         bc_[index].check = val;
 
         // 要素をすべて使い切ってしまった時の処理
-        if(bc_[E_HEAD].not_used == false) {
+        if(!bc_[E_HEAD].not_used) {
             E_HEAD = -1;
         }
     }

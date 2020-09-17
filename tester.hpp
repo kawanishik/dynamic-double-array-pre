@@ -60,6 +60,15 @@ public:
         //strset.SizeCheck();
         //strset.CheckTAIL();
         strset.EmptyNum();
+        strset.REBUILD();
+        bool check = true;
+        for(int i=0; i< n; i++) {
+            check &= test(str_list[i]);
+            if(!check) {
+                break;
+            }
+        }
+        std::cout << (check ? "OK" : "Failed") << std::endl;
     }
     bool test(const std::string& str) {
         return(strset.contains(str));
