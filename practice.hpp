@@ -43,6 +43,7 @@ private:
     int E_HEAD = -1;
     std::vector<uint8_t> TAIL;
     std::vector<Unit> tmp_bc_;
+    std::vector<uint8_t> tmp_TAIL;
     
 
 public:
@@ -50,6 +51,81 @@ public:
     StringSet() {
         bc_ = {{kEmptyBase, 0, false, MaxUint8_t, MaxUint8_t}}; // set root element
         TAIL.resize(1, MaxUint8_t-1);
+    }
+
+    // REBUILDする際に用いる
+    StringSet(const StringSet& rhs) {
+        tmp_bc_ = rhs.bc_; // 元のデータをtmp_bcにコピーしておく
+        std::vector<IndexUint> tmp_index; // 遷移ができるindexを格納しておくための配列(もともとのダブル配列のindex)
+        E_HEAD = -1; // 初期化したため
+        bc_ = {{kEmptyBase, 0, false, MaxUint8_t, MaxUint8_t}}; // set root element
+        // TAILの初期化処理
+        tmp_TAIL = rhs.TAIL;
+        TAIL.clear();
+        TAIL.resize(1, MaxUint8_t-1);
+
+        // 先頭ノードのみ行う(tmp_indexのサイズが0だから)
+        auto row = GetChildrenRebild(0); // 専用の関数(REBUILDの時のみ用いる)
+        int base = find_base(row);
+        bc_[0].base = base;
+        bc_[0].child = tmp_bc_[0].child;
+        bc_[0].sibling = tmp_bc_[0].sibling;
+        for(auto c : row) {
+            int next_node = tmp_bc_[0].base + c;
+            int next_node_now = base + c;
+            expand(next_node_now);
+            AddCheck(next_node_now, 0);
+            bc_[next_node_now].child = tmp_bc_[next_node].child;
+            bc_[next_node_now].sibling = tmp_bc_[next_node].sibling;
+            if(tmp_bc_[next_node].base < 0) {
+                bc_[base + c].base = -1 * TAIL.size();
+                RebuildTAIL(next_node);
+            }
+            else {
+                int size = tmp_index.size();
+                tmp_index.resize(size+1);
+                tmp_index[size].pre_index = next_node;
+                tmp_index[size].now_index = next_node_now;
+            }
+        }
+        // tmp_indexは，使ったら消す処理をしているので，要素がなくなるまで
+        // eraseは時間がかかっていそうな気がするので，使わない
+        int loop_count = 0;
+        int index_size = tmp_index.size();
+        //while(tmp_index.size() != 0) {
+        while(true) {
+            int pre_node = tmp_index[loop_count].pre_index;
+            int now_node = tmp_index[loop_count].now_index;
+            auto row = GetChildrenRebild(pre_node);
+            int base = find_base(row);
+            bc_[now_node].base = base;
+            for(auto c : row) {
+                int next_node = tmp_bc_[pre_node].base + c;
+                int next_node_now = base + c;
+                expand(next_node_now);
+                AddCheck(base+c, now_node);
+                bc_[next_node_now].child = tmp_bc_[next_node].child;
+                bc_[next_node_now].sibling = tmp_bc_[next_node].sibling;
+                if(tmp_bc_[next_node].base < 0) {
+                    //bc_[base + c].base = tmp_bc_[next_node].base;
+                    bc_[base + c].base = -1 * TAIL.size();
+                    RebuildTAIL(next_node);
+                }
+                else {
+                    int size = tmp_index.size();
+                    tmp_index.resize(size+1);
+                    tmp_index[size].pre_index = next_node;
+                    tmp_index[size].now_index = base + c;
+                    index_size++;
+                }
+            }
+            //tmp_index.erase(tmp_index.begin()); // 先頭の要素を消している
+            loop_count++;
+            if(loop_count == index_size)
+                break;
+        }
+        tmp_bc_.clear();
+        tmp_TAIL.clear();
     }
 
     // 文字列を追加するための関数
@@ -209,6 +285,7 @@ public:
             std::cout << "TAIL[i] : " << TAIL[i] << std::endl;
         }
         */
+        /*
         std::cout << "TAIL_size : " << TAIL.size() << std::endl;
         int count = 0;
         for(int i=0; i < TAIL.size(); i++) {
@@ -217,6 +294,8 @@ public:
             }
         }
         std::cout << "not use TAIL rate : " << count << " / " << TAIL.size() << std::endl;
+        */
+        std::cout << "TAIL.size : " << TAIL.size() << std::endl;
     }
 
     // 空要素数を求める関数
@@ -234,61 +313,24 @@ public:
     // REBUILD関数(静的にbc_を作り直す)
     void REBUILD() {
         std::cout << "REBUILD" << std::endl;
-        tmp_bc_ = bc_; // 元のデータをtmp_bcにコピーしておく
-        std::vector<IndexUint> tmp_index; // 遷移ができるindexを格納しておくための配列(もともとのダブル配列のindex)
-        bc_.clear();
-        E_HEAD = -1; // 初期化したため
-        bc_ = {{kEmptyBase, 0, false, MaxUint8_t, MaxUint8_t}}; // set root element
-        expand(tmp_bc_.size()-1); // expand関数を用いることによって，領域を確保し，未使用要素を連結している
-        
-        // 先頭ノードのみ行う(tmp_indexのサイズが0だから)
-        auto row = GetChildrenRebild(0); // 専用の関数(REBUILDの時のみ用いる)
-        int base = find_base(row);
-        bc_[0].base = base;
-        bc_[0].child = tmp_bc_[0].child;
-        bc_[0].sibling = tmp_bc_[0].sibling;
-        for(auto c : row) {
-            int next_node = tmp_bc_[0].base + c;
-            int next_node_now = base + c;
-            AddCheck(next_node_now, 0);
-            bc_[next_node_now].child = tmp_bc_[next_node].child;
-            bc_[next_node_now].sibling = tmp_bc_[next_node].sibling;
-            if(tmp_bc_[next_node].base < 0) {
-                bc_[base + c].base = tmp_bc_[next_node].base;
-            }
-            else {
-                int size = tmp_index.size();
-                tmp_index.resize(size+1);
-                tmp_index[size].pre_index = next_node;
-                tmp_index[size].now_index = next_node_now;
+        *this = StringSet(*this);
+    }
+
+    // 負荷率αを返す関数
+    double EmptyRate() {
+        double size = bc_.size();
+        double empty_count = 0;
+        if(E_HEAD != -1) {
+            int e_index = E_HEAD;
+            empty_count++;
+            e_index = bc_[e_index].check;
+            while(E_HEAD != e_index) {
+                empty_count++;
+                e_index = bc_[e_index].check;
             }
         }
-        // tmp_indexは，使ったら消す処理をしているので，要素がなくなるまで
-        while(tmp_index.size() != 0) {
-            int pre_node = tmp_index[0].pre_index;
-            int now_node = tmp_index[0].now_index;
-            auto row = GetChildrenRebild(pre_node);
-            int base = find_base(row);
-            bc_[now_node].base = base;
-            for(auto c : row) {
-                int next_node = tmp_bc_[pre_node].base + c;
-                int next_node_now = base + c;
-                AddCheck(base+c, now_node);
-                bc_[next_node_now].child = tmp_bc_[next_node].child;
-                bc_[next_node_now].sibling = tmp_bc_[next_node].sibling;
-                if(tmp_bc_[next_node].base < 0) {
-                    bc_[base + c].base = tmp_bc_[next_node].base;
-                }
-                else {
-                    int size = tmp_index.size();
-                    tmp_index.resize(size+1);
-                    tmp_index[size].pre_index = next_node;
-                    tmp_index[size].now_index = base + c;
-                }
-            }
-            tmp_index.erase(tmp_index.begin()); // 先頭の要素を消している
-        }
-        tmp_bc_.clear();
+
+        return (size-empty_count) / size;
     }
 
 private:
@@ -297,13 +339,16 @@ private:
         int e_index = E_HEAD;
         int base;
         int roop = 0;
-        
-        if(E_HEAD == -1) {
-            return bc_.size();
-        }
 
         // row の中で，一番小さい数字を選択
         uint8_t c = *std::min_element(row.begin(), row.end()); // 値ではなく，反復子を返す(*がいる)
+        
+        if(E_HEAD == -1) {
+            int base = bc_.size() - c;
+            if(base < 0)
+                base = 0;
+            return base;
+        }
         
         while(true) {
 
@@ -610,7 +655,6 @@ private:
         if(tmp_bc_[r].base == kEmptyBase) {
             return row;
         }
-
         int next_node = tmp_bc_[r].base + tmp_bc_[r].child;
         row.emplace_back();
         row[count] = tmp_bc_[r].child;
@@ -624,6 +668,16 @@ private:
             row[count] = tmp_bc_[next_node].sibling;
             next_node = tmp_bc_[r].base + tmp_bc_[next_node].sibling;
             count++;
+        }
+    }
+
+    // REBUILDする際に，TAILを組み直すための関数
+    void RebuildTAIL(int r) {
+        int pos = -1 * tmp_bc_[r].base;
+        TAIL.push_back(tmp_TAIL[pos]);
+        while(tmp_TAIL[pos] != kLeafChar) {
+            pos++;
+            TAIL.push_back(tmp_TAIL[pos]);
         }
     }
 
@@ -663,7 +717,7 @@ private:
         
         if(!bc_[index].not_used) {
             //flag = false;
-            E_HEAD = -1;
+            //E_HEAD = -1; // この処理は必要なし
             bc_[index].check = val;
             return;
         }
