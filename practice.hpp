@@ -7,6 +7,7 @@
 #include <cassert>
 #include <thread>
 #include <algorithm>
+#include <deque>
 
 namespace b3prac {
 
@@ -34,17 +35,10 @@ private:
         int index;
         uint8_t child;
     };
-    // rebuildする際に用いる
-    struct IndexUint {
-        int pre_index; // 再構築前の値の保持
-        int now_index; // 再構築後の値の保持
-    };
     std::vector<Unit> bc_;
     int E_HEAD = -1;
     std::vector<uint8_t> TAIL;
-    std::vector<Unit> tmp_bc_;
-    std::vector<uint8_t> tmp_TAIL;
-    
+    using Index_pair = std::pair<int, int>; // firstには再構築前の値，secondには再構築後の値
 
 public:
     //StringSet() = default;
@@ -55,77 +49,59 @@ public:
 
     // REBUILDする際に用いる
     StringSet(const StringSet& rhs) {
-        tmp_bc_ = rhs.bc_; // 元のデータをtmp_bcにコピーしておく
-        std::vector<IndexUint> tmp_index; // 遷移ができるindexを格納しておくための配列(もともとのダブル配列のindex)
+        std::deque<Index_pair> tmp_index; // 遷移ができるindexを格納しておくための配列(もともとのダブル配列のindex)
         E_HEAD = -1; // 初期化したため
         bc_ = {{kEmptyBase, 0, false, MaxUint8_t, MaxUint8_t}}; // set root element
         // TAILの初期化処理
-        tmp_TAIL = rhs.TAIL;
-        TAIL.clear();
         TAIL.resize(1, MaxUint8_t-1);
 
         // 先頭ノードのみ行う(tmp_indexのサイズが0だから)
-        auto row = GetChildrenRebild(0); // 専用の関数(REBUILDの時のみ用いる)
+        auto row = rhs.GetChildren(0);
         int base = find_base(row);
         bc_[0].base = base;
-        bc_[0].child = tmp_bc_[0].child;
-        bc_[0].sibling = tmp_bc_[0].sibling;
+        bc_[0].child = rhs.bc_[0].child;
+        bc_[0].child = rhs.bc_[0].sibling;
         for(auto c : row) {
-            int next_node = tmp_bc_[0].base + c;
+            int next_node = rhs.bc_[0].base + c;
             int next_node_now = base + c;
             expand(next_node_now);
             AddCheck(next_node_now, 0);
-            bc_[next_node_now].child = tmp_bc_[next_node].child;
-            bc_[next_node_now].sibling = tmp_bc_[next_node].sibling;
-            if(tmp_bc_[next_node].base < 0) {
+            bc_[next_node_now].child = rhs.bc_[next_node].child;
+            bc_[next_node_now].sibling = rhs.bc_[next_node].sibling;
+            if(rhs.bc_[next_node].base < 0) {
                 bc_[base + c].base = -1 * TAIL.size();
-                RebuildTAIL(next_node);
+                RebuildTAIL(rhs.bc_[next_node].base, rhs.TAIL);
             }
             else {
-                int size = tmp_index.size();
-                tmp_index.resize(size+1);
-                tmp_index[size].pre_index = next_node;
-                tmp_index[size].now_index = next_node_now;
+                // dequeに値を保存
+                tmp_index.emplace_front(next_node, next_node_now);
             }
         }
+
         // tmp_indexは，使ったら消す処理をしているので，要素がなくなるまで
-        // eraseは時間がかかっていそうな気がするので，使わない
-        int loop_count = 0;
-        int index_size = tmp_index.size();
-        //while(tmp_index.size() != 0) {
-        while(true) {
-            int pre_node = tmp_index[loop_count].pre_index;
-            int now_node = tmp_index[loop_count].now_index;
-            auto row = GetChildrenRebild(pre_node);
+        while(!tmp_index.empty()) {
+            int pre_node = tmp_index.front().first;
+            int now_node = tmp_index.front().second;
+            tmp_index.pop_front();
+            auto row = rhs.GetChildren(pre_node);
             int base = find_base(row);
             bc_[now_node].base = base;
             for(auto c : row) {
-                int next_node = tmp_bc_[pre_node].base + c;
+                int next_node = rhs.bc_[pre_node].base + c;
                 int next_node_now = base + c;
                 expand(next_node_now);
                 AddCheck(base+c, now_node);
-                bc_[next_node_now].child = tmp_bc_[next_node].child;
-                bc_[next_node_now].sibling = tmp_bc_[next_node].sibling;
-                if(tmp_bc_[next_node].base < 0) {
-                    //bc_[base + c].base = tmp_bc_[next_node].base;
+                bc_[next_node_now].child = rhs.bc_[next_node].child;
+                bc_[next_node_now].sibling = rhs.bc_[next_node].sibling;
+                if(rhs.bc_[next_node].base < 0) {
                     bc_[base + c].base = -1 * TAIL.size();
-                    RebuildTAIL(next_node);
+                    RebuildTAIL(rhs.bc_[next_node].base, rhs.TAIL);
                 }
                 else {
-                    int size = tmp_index.size();
-                    tmp_index.resize(size+1);
-                    tmp_index[size].pre_index = next_node;
-                    tmp_index[size].now_index = base + c;
-                    index_size++;
+                    tmp_index.emplace_front(next_node, base+c);
                 }
             }
-            //tmp_index.erase(tmp_index.begin()); // 先頭の要素を消している
-            loop_count++;
-            if(loop_count == index_size)
-                break;
         }
-        tmp_bc_.clear();
-        tmp_TAIL.clear();
     }
 
     // 文字列を追加するための関数
@@ -625,7 +601,7 @@ private:
     }
 
     // 親番号に対する子の集合を返すための関数
-    std::vector<uint8_t> GetChildren(int r) {
+    std::vector<uint8_t> GetChildren(int r) const{
         std::vector<uint8_t> row;
         int count = 0;
         if(bc_[r].base == kEmptyBase) {
@@ -648,36 +624,13 @@ private:
         }
     }
 
-    // REBUILD関数に用いるためのGetChildrenRebuild
-    std::vector<uint8_t> GetChildrenRebild(int r) {
-        std::vector<uint8_t> row;
-        int count = 0;
-        if(tmp_bc_[r].base == kEmptyBase) {
-            return row;
-        }
-        int next_node = tmp_bc_[r].base + tmp_bc_[r].child;
-        row.emplace_back();
-        row[count] = tmp_bc_[r].child;
-        count++;
-
-        while(true) {
-            if(tmp_bc_[next_node].sibling == MaxUint8_t) {
-                return  row;
-            }
-            row.emplace_back();
-            row[count] = tmp_bc_[next_node].sibling;
-            next_node = tmp_bc_[r].base + tmp_bc_[next_node].sibling;
-            count++;
-        }
-    }
-
     // REBUILDする際に，TAILを組み直すための関数
-    void RebuildTAIL(int r) {
-        int pos = -1 * tmp_bc_[r].base;
-        TAIL.push_back(tmp_TAIL[pos]);
-        while(tmp_TAIL[pos] != kLeafChar) {
+    void RebuildTAIL(int base, const std::vector<uint8_t>& pre_TAIL) {
+        int pos = -1 * base;
+        TAIL.push_back(pre_TAIL[pos]);
+        while(pre_TAIL[pos] != kLeafChar) {
             pos++;
-            TAIL.push_back(tmp_TAIL[pos]);
+            TAIL.push_back(pre_TAIL[pos]);
         }
     }
 
