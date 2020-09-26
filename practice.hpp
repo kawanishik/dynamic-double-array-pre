@@ -8,6 +8,8 @@
 #include <thread>
 #include <algorithm>
 #include <deque>
+#include <functional>
+#include <utility>
 
 namespace b3prac {
 
@@ -55,37 +57,13 @@ public:
         // TAILの初期化処理
         TAIL.resize(1, MaxUint8_t-1);
 
-        // 先頭ノードのみ行う(tmp_indexのサイズが0だから)
-        auto row = rhs.GetChildren(0);
-        int base = find_base(row);
-        bc_[0].base = base;
-        bc_[0].child = rhs.bc_[0].child;
-        bc_[0].child = rhs.bc_[0].sibling;
-        for(auto c : row) {
-            int next_node = rhs.bc_[0].base + c;
-            int next_node_now = base + c;
-            expand(next_node_now);
-            AddCheck(next_node_now, 0);
-            bc_[next_node_now].child = rhs.bc_[next_node].child;
-            bc_[next_node_now].sibling = rhs.bc_[next_node].sibling;
-            if(rhs.bc_[next_node].base < 0) {
-                bc_[base + c].base = -1 * TAIL.size();
-                RebuildTAIL(rhs.bc_[next_node].base, rhs.TAIL);
-            }
-            else {
-                // dequeに値を保存
-                tmp_index.emplace_front(next_node, next_node_now);
-            }
-        }
-
-        // tmp_indexは，使ったら消す処理をしているので，要素がなくなるまで
-        while(!tmp_index.empty()) {
-            int pre_node = tmp_index.front().first;
-            int now_node = tmp_index.front().second;
-            tmp_index.pop_front();
+        auto call_lambda = [&](auto recurent_lambda, int pre_node, int now_node) {
             auto row = rhs.GetChildren(pre_node);
             int base = find_base(row);
             bc_[now_node].base = base;
+            if(!row.size())
+                return;
+            // とりあえずcheck, child, sibling値を格納
             for(auto c : row) {
                 int next_node = rhs.bc_[pre_node].base + c;
                 int next_node_now = base + c;
@@ -93,15 +71,20 @@ public:
                 AddCheck(base+c, now_node);
                 bc_[next_node_now].child = rhs.bc_[next_node].child;
                 bc_[next_node_now].sibling = rhs.bc_[next_node].sibling;
+            }
+            for(auto c : row) {
+                int next_node = rhs.bc_[pre_node].base + c;
+                int next_node_now = base + c;
                 if(rhs.bc_[next_node].base < 0) {
                     bc_[base + c].base = -1 * TAIL.size();
                     RebuildTAIL(rhs.bc_[next_node].base, rhs.TAIL);
                 }
                 else {
-                    tmp_index.emplace_front(next_node, base+c);
+                    recurent_lambda(recurent_lambda, next_node, next_node_now);
                 }
             }
-        }
+        };
+        call_lambda(call_lambda, 0, 0);
     }
 
     // 文字列を追加するための関数
