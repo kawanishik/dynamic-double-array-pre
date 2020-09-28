@@ -8,7 +8,6 @@
 #include <thread>
 #include <algorithm>
 #include <deque>
-#include <functional>
 #include <utility>
 
 namespace b3prac {
@@ -59,10 +58,10 @@ public:
 
         auto call_lambda = [&](auto recurent_lambda, int pre_node, int now_node) {
             auto row = rhs.GetChildren(pre_node);
-            int base = find_base(row);
-            bc_[now_node].base = base;
             if(!row.size())
                 return;
+            int base = find_base(row);
+            bc_[now_node].base = base;
             // とりあえずcheck, child, sibling値を格納
             for(auto c : row) {
                 int next_node = rhs.bc_[pre_node].base + c;
